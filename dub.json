@@ -1,0 +1,12 @@
+{
+	"name"         : "bitpiced",
+	"description"  : "A minimal D application.",
+	"authors"      : [ "vital" ],
+	"copyright"    : "Copyright © 2022, vital",
+	"license"      : "GPL3",
+	"dependencies" : {
+		"bindbc-sdl"   : "~>1.2.3",
+ 	},
+	"versions"     : ["SDL_2022"],
+	"dflags"       : [ "-mixin=mixins.d" ],
+}
