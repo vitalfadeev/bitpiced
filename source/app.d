@@ -159,10 +159,16 @@ SDLException : Exception {
 
 struct
 Frame {
-    VBox vbox;
+    //VBox vbox;
     //Grid grid;
     alias
+    DT2 = _Datas!(bool,size_t);
+    
+    _VBox!DT2 vbox;
+
+    alias
     DT = _Datas!(bool,size_t);
+    
     _GridView!DT grid;
 
     MonoBitPics bitfont;
@@ -198,9 +204,10 @@ Frame {
 
 
 struct
-VBox {
-    Grid _super = {[],[],[],1,12,true};
+_VBox (DT) {
+	_GridView!DT _super = {_View!DT.init,[],1,12,true};
     alias _super this;
+
 
     void
 	setup (ref Base base, ref Size size) {
@@ -213,14 +220,14 @@ VBox {
 	draw (SDL_Renderer* renderer) {
 	    SDL_SetRenderDrawColor (renderer, 0xFF, 0xFF, 0xFF, 0xFF);
 		foreach (i,ref sen;sensors) {
-	    	draw_bg (renderer,sen,bits[i]);
-	    	draw_text (renderer,sen,bits[i]);
-	    	draw_borders (renderer,sen,bits[i]);
+	    	draw_bg (renderer,sen,_selected[i]);
+	    	draw_text (renderer,sen,_selected[i]);
+	    	draw_borders (renderer,sen,_selected[i]);
 		}
 	}
 
 	void
-	draw_text (SDL_Renderer* renderer, ref BaseSize bs, ref bool b) {
+	draw_text (SDL_Renderer* renderer, ref BaseSize bs, bool b) {
 	    SDL_SetRenderDrawColor (renderer, 0xFF, 0xFF, 0xFF, 0xFF);
 	    // \
 	    SDL_RenderDrawLine (
@@ -240,152 +247,14 @@ VBox {
 }
 
 
-struct
-Grid {
-	BaseSize[] sensors;
-	bool[]     bits;      // selected bitmap
-	size_t[]   bits_ids;  // selected ids
-
-    auto x_cells = 12;
-    auto y_cells = 12;
-
-    bool one_bit_mode;
-
-    Datas datas;
-
-
-	void
-	setup (ref Base base, ref Size size) {
-	    auto c_base = base;
-
-	    sensors.length = bits.length = x_cells * y_cells;
-	    auto sensors_ptr = sensors.ptr;
-
-	    for (auto iy=0; iy<y_cells; iy++) {
-		    for (auto ix=0; ix<x_cells; ix++) {
-		    	*sensors_ptr = BaseSize (c_base,size);
-
-		    	//
-		    	c_base.x += size.x;
-		    	sensors_ptr++;
-		    }
-
-		    //
-	    	c_base.x  = base.x;
-	    	c_base.y += size.y;
-	    }
-	}
-
-	void
-	draw (SDL_Renderer* renderer) {
-	    SDL_SetRenderDrawColor (renderer, 0xFF, 0xFF, 0xFF, 0xFF);
-		foreach (i,ref sen;sensors) {
-	    	draw_bg (renderer,sen,bits[i]);
-	    	draw_borders (renderer,sen,bits[i]);
-		}
-	}
-
-	void
-	draw_bg (SDL_Renderer* renderer, ref BaseSize bs, ref bool b) {
-		if (b)
-		    SDL_SetRenderDrawColor (renderer, 0xFF, 0xFF, 0xFF, 0xFF);
-		else
-		    SDL_SetRenderDrawColor (renderer, 0x00, 0x00, 0x00, 0xFF);
-
-		auto rect = 
-			SDL_Rect (
-				bs.base.x,
-				bs.base.y,
-				bs.size.x+1,
-				bs.size.y+1);
-
-		SDL_RenderFillRect (renderer,&rect);
-	}
-
-	void
-	draw_borders (SDL_Renderer* renderer, ref BaseSize bs, ref bool b) {
-		if (b)
-		    SDL_SetRenderDrawColor (renderer, 0xFF, 0xFF, 0xFF, 0xFF);
-		else
-		    SDL_SetRenderDrawColor (renderer, 0xFF, 0xFF, 0xFF, 0xFF);
-
-		auto rect = 
-			SDL_Rect (
-				bs.base.x,
-				bs.base.y,
-				bs.size.x+1,
-				bs.size.y+1);
-
-		SDL_RenderDrawRect (renderer,&rect);
-	}
-
-	void
-	event (SDL_Event* e) {
-        switch (e.type) {
-        	case SDL_MOUSEBUTTONDOWN:
-        		auto xy = 
-        			XY (
-        				cast(short)e.button.x,
-        				cast(short)e.button.y
-    				);
-
-        		foreach (i,ref sen;sensors)
-        			if (sen.has (xy)) {
-// view.click
-//   request --> event queue
-//               event queue --> DataSource.request
-//                                 callback --> event queue
-//                                              event queue --> UI.event
-//                                                                update view
-        				if (datas.request (Datas.REQUEST_INVERT,i)) {
-        					// update ui
-	        				if (one_bit_mode)
-	        					clear_bits ();
-	        				update_bit (i);
-	        				//send_event (USER_EVENT_BIT_UPDATED,cast(void*)i);
-        				}
-        				break;
-        			}
-
-        		break;
-
-        	default:
-        }
-	}
-
-
-	void
-	update_bit (size_t i) {
-		if (bits[i]) {
-			auto _bi = bits_ids.countUntil (i);
-			if (_bi != -1)
-				bits_ids.remove (_bi);
-			bits[i] = false;
-		}
-		else {
-			bits_ids ~= i;
-			bits[i] = true;
-		}	    
-	}
-
-
-	void
-	clear_bits () {
-	    foreach (bi;bits_ids)
-	    	bits[bi] = false;
-	    bits_ids.length = 0;
-	}
-
-
-	void
-	send_event (int event_id, void* data1) {
-	    SDL_Event event;
-	    event.type = cast(SDL_EventType)USER_EVENT;
-	    event.user.code = event_id;
-	    event.user.data1 = data1;
-	    //event.user.data2 = void*;
-	    SDL_PushEvent(&event);
-    }
+void
+send_event (int event_id, void* data1) {
+    SDL_Event event;
+    event.type = cast(SDL_EventType)USER_EVENT;
+    event.user.code = event_id;
+    event.user.data1 = data1;
+    //event.user.data2 = void*;
+    SDL_PushEvent(&event);
 }
 
 alias
@@ -552,6 +421,11 @@ _Selected (TID=size_t) {
 		
 		if (i != -1)
 	    	_ids = _ids.remove (i);
+	}
+
+	void
+	clr () {
+	    _ids.length = 0;
 	}
 
 	bool
@@ -772,6 +646,8 @@ _GridView (DT) {
 	        				}
 	        				else {               // set
 		        				op.set_data (true);
+		        				if (one_bit_mode)
+		        					clear_bits ();
 		        				_selected.set (i);
 	        				}
 
@@ -800,5 +676,10 @@ _GridView (DT) {
 //                                 callback --> event queue
 //                                              event queue --> UI.event
 //                                                                update view
+	}
+
+	void
+	clear_bits () {
+		_selected.clr ();
 	}
 }
